@@ -2,7 +2,6 @@ package com.picpaysimplificado.picpaysimplificado.services;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,7 +25,10 @@ public class TransactionService {
     @Autowired
     private RestTemplate restTemplate;
 
-    public void createTransaction(TransactionDto transaction)throws Exception{
+    @Autowired
+    private NotificationService notificationService;
+
+    public Transaction createTransaction(TransactionDto transaction)throws Exception{
         User sender = this.userService.findUserById(transaction.senderId());
         User receiver = this.userService.findUserById(transaction.receiverId());
 
@@ -48,17 +50,33 @@ public class TransactionService {
         this.transactionRepository.save(newTransaction);
         this.userService.saveUser(sender);
         this.userService.saveUser(receiver);
+
+        //this.notificationService.sendNotification(sender,"Transação realizada com sucesso");
+        //this.notificationService.sendNotification(receiver,"Transação recebida com sucesso");
+
+        return newTransaction;
     }
 
-    public boolean authorizeTransaction(User sender,BigDecimal value){
-        @SuppressWarnings("rawtypes")
-        ResponseEntity<Map> authorizationResponse= restTemplate.getForEntity("run.mocky.io/v3/8fafdd68-a090-496f-8c9a-3442cf30dae6", Map.class);
-
-        if(authorizationResponse.getStatusCode() == HttpStatus.OK){
-            String message = (String) authorizationResponse.getBody().get("message");
-            return "Autorizado".equalsIgnoreCase(message);
+    public boolean authorizeTransaction(User sender, BigDecimal value) {
+        try {
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> authorizationResponse = restTemplate.getForEntity("https://util.devi.tools/api/v2/authorize", Map.class);
+    
+            if (authorizationResponse.getStatusCode() == HttpStatus.OK && authorizationResponse.getBody() != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> body = authorizationResponse.getBody();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) body.get("data"); // Pegando o objeto dentro de "data"
+                
+                if (data != null && data.containsKey("authorization")) {
+                    return (Boolean) data.get("authorization"); // Pegando o valor booleano
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao chamar API de autorização: " + e.getMessage());
         }
         return false;
     }
+    
 
 }
