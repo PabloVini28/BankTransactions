@@ -10,6 +10,7 @@ import com.picpaysimplificado.picpaysimplificado.dtos.ExceptionDto;
 import jakarta.persistence.EntityNotFoundException;
 
 @RestControllerAdvice
+@SuppressWarnings("rawtypes")
 public class ControllerExceptionHandler {
     
     @ExceptionHandler(DataIntegrityViolationException.class)
